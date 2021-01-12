@@ -1,19 +1,22 @@
 import * as dd from "dingtalk-jsapi"
-const axios = require("axios")
-const CorpId = "dingb8dd67de6dece55d4ac5d6980864d335"
-const AgentId = "1055458886"
+import CryptoJS from 'crypto-js';
 const AppKey = "dingdy4jvvxkrgzvv6hv"
 const AppSecret = "PZLKKKz7eetQ0yjD_LyHLu-rECbdMWtKLKGOiFpGEz02IbN2n5la_2s32B36oUzf"
-const token = "67e5d514d629313da3772bd0a47760ae"
-const ticket = "13nFiIudVbqGprguoOb4T4ADrirfUEYXr69unKvUgNicqU5jG9Oj1JlPwpeamyhaV8j9ss1Jt4jQfxs0RzKyjZ"
+const token = "f1d62ed864403132b27e40c109bc9697"
+
+const CorpId = "dingb8dd67de6dece55d4ac5d6980864d335"
+const AgentId = "1055458886"
+const ticket = "uQJGG9KmKtCG0ec7jMma9QT8PYdLPfYWXgMwjpkhOlAb8VMzhYxA0kAHdcrvhB31npQbfzOaS7CD4MyXj5Rgl1"
 const noncestr = "test"
 const timestamp = new Date().getTime()
-const url = decodeURI(window.location.href)
+const url = window.location.href.split("#")[0]
+console.log('url', url);
+let plainTex = `jsapi_ticket=${ticket}&noncestr=${noncestr}&timestamp=${timestamp}&url=${url}`
 const crypto = require('crypto');
 const hash = crypto.createHash('sha256');
-// 可任意多次调用update():
-hash.update(`jsapi_ticket=${ticket}&noncestr=${noncestr}&timestamp=${timestamp}&url=${url}`);
+hash.update(plainTex);
 let signature = hash.digest("hex")
+// let signature = CryptoJS.SHA1(plainTex).toString();
 dd.config({
     agentId: AgentId, // 必填，微应用ID
     corpId: CorpId,//必填，企业ID
@@ -29,25 +32,57 @@ dd.config({
         'device.notification.prompt',
         'biz.ding.post',
         'biz.util.openLink',
-        'biz.conference.videoConfCall'
+        'biz.conference.videoConfCall',
+        'device.base.getUUID'
     ] // 必填，需要使用的jsapi列表，注意：不要带dd。
 });
 
-let code
+
 dd.ready(function () {
-    dd.runtime.permission.requestAuthCode({
-        corpId: CorpId, // 企业id
-        onSuccess: function (info) {
-            code = info.code // 通过该免登授权码可以获取用户身份
-            console.log("info", info);
+    if (dd.env.platform === "pc") {
+        dd.device.notification.alert({
+            message: "请在手机端打开该页面",
+            title: "提示",//可传空
+            buttonName: "",
+            onSuccess: function () {
+                //onSuccess将在点击button之后回调
+                /*回调*/
+            },
+            onFail: function (err) { }
+        });
+        return
+    }
+
+    let call = document.querySelector(".call")
+    call.addEventListener("click", () => {
+        let members = document.querySelectorAll("input[type='checkbox']:checked")
+        let userids = []
+        for (let index = 0; index < members.length; index++) {
+
+            userids.push(members[index].value)
 
         }
-    });
-    dd.biz.conference.videoConfCall({
-        title: "a meaningful title",
-        calleeCorpId: CorpId,
-        calleeStaffIds: ["322013122320863019"],
-        onSuccess: function (res) { console.log("success", res); },
-        onFail: function (err) { "fail", err }
+        if (userids.length == 0) {
+            dd.device.notification.alert({
+                message: "请选择参会人员！",
+                title: "提示",//可传空
+                buttonName: "收到",
+                onSuccess: function () {
+                    //onSuccess将在点击button之后回调
+                    /*回调*/
+                },
+                onFail: function (err) { }
+            });
+            return
+        }
+        console.log("userids", userids);
+        dd.biz.conference.videoConfCall({
+            title: "视频会议测试",
+            calleeCorpId: CorpId,
+            calleeStaffIds: userids,
+            onSuccess: function (res) { console.log("success", res); },
+            onFail: function (err) { console.log("fail", err); }
+        })
+
     })
 });
